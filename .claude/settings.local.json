@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dotnet new:*)",
+      "Bash(dotnet add:*)",
+      "Bash(Remove-Item -Recurse -Force \"C:\\\\personal\\\\golfapp\\\\Data\\\\Migrations\")",
+      "Bash(dotnet ef migrations:*)",
+      "Bash(dotnet tool install:*)",
+      "Bash(dotnet tool:*)",
+      "Bash(dotnet build:*)",
+      "Bash(dotnet ef database:*)"
+    ]
+  }
+}

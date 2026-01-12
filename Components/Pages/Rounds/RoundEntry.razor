@@ -1,0 +1,265 @@
+@page "/rounds/new"
+@page "/rounds/edit/{Id:int}"
+@using Microsoft.AspNetCore.Authorization
+@using GolfScorer.Models
+@using GolfScorer.Services
+@attribute [Authorize]
+@inject CourseService CourseService
+@inject RoundService RoundService
+@inject AuthenticationStateProvider AuthStateProvider
+@inject NavigationManager Navigation
+@rendermode InteractiveServer
+
+<PageTitle>@(Id == null ? "Record Round" : "Edit Round")</PageTitle>
+
+<h1>@(Id == null ? "Record Round" : "Edit Round")</h1>
+
+@if (courses == null)
+{
+    <p>Loading...</p>
+}
+else if (!courses.Any())
+{
+    <div class="alert alert-warning">
+        <p>You need to add a course before recording a round.</p>
+        <a href="/courses/new" class="btn btn-primary">Add Course</a>
+    </div>
+}
+else
+{
+    <EditForm Model="round" OnValidSubmit="SaveRound" FormName="roundForm">
+        <DataAnnotationsValidator />
+
+        <div class="row mb-4">
+            <div class="col-md-4">
+                <label class="form-label">Course</label>
+                <InputSelect @bind-Value="round.CourseId" class="form-select" @onchange="OnCourseChanged">
+                    <option value="0">Select a course...</option>
+                    @foreach (var course in courses)
+                    {
+                        <option value="@course.Id">@course.Name (Par @course.Par)</option>
+                    }
+                </InputSelect>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Date Played</label>
+                <InputDate @bind-Value="round.DatePlayed" class="form-control" />
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Weather</label>
+                <InputSelect @bind-Value="round.WeatherConditions" class="form-select">
+                    <option value="">Select...</option>
+                    <option value="Sunny">Sunny</option>
+                    <option value="Cloudy">Cloudy</option>
+                    <option value="Overcast">Overcast</option>
+                    <option value="Rainy">Rainy</option>
+                    <option value="Windy">Windy</option>
+                </InputSelect>
+            </div>
+        </div>
+
+        @if (selectedCourse != null)
+        {
+            <h4 class="mb-3">Hole-by-Hole Scores</h4>
+
+            <div class="table-responsive mb-4">
+                <table class="table table-bordered table-sm">
+                    <thead class="table-dark">
+                        <tr>
+                            <th style="width: 80px">Hole</th>
+                            <th style="width: 60px">Par</th>
+                            <th style="width: 100px">Score</th>
+                            <th style="width: 100px">Putts</th>
+                            <th style="width: 80px">GIR</th>
+                            <th style="width: 80px">Fairway</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @for (int i = 0; i < selectedCourse.NumberOfHoles; i++)
+                        {
+                            var idx = i;
+                            var par = selectedCourse.GetHolePar(i + 1);
+                            holeScores[idx].Par = par;
+                            holeScores[idx].HoleNumber = i + 1;
+
+                            <tr>
+                                <td class="text-center align-middle"><strong>@(i + 1)</strong></td>
+                                <td class="text-center align-middle">@par</td>
+                                <td>
+                                    <InputNumber @bind-Value="holeScores[idx].Score" class="form-control form-control-sm" min="1" max="15" />
+                                </td>
+                                <td>
+                                    <InputNumber @bind-Value="holeScores[idx].Putts" class="form-control form-control-sm" min="0" max="10" />
+                                </td>
+                                <td class="text-center">
+                                    <InputCheckbox @bind-Value="holeScores[idx].GreenInRegulation" class="form-check-input" />
+                                </td>
+                                <td class="text-center">
+                                    @if (par != 3)
+                                    {
+                                        <InputCheckbox @bind-Value="fairwayHits[idx]" class="form-check-input" @onchange="() => OnFairwayChanged(idx)" />
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">-</span>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                    <tfoot class="table-secondary">
+                        <tr>
+                            <th>Total</th>
+                            <th>@selectedCourse.Par</th>
+                            <th><strong>@holeScores.Take(selectedCourse.NumberOfHoles).Sum(h => h.Score)</strong></th>
+                            <th>@holeScores.Take(selectedCourse.NumberOfHoles).Sum(h => h.Putts)</th>
+                            <th>@holeScores.Take(selectedCourse.NumberOfHoles).Count(h => h.GreenInRegulation)</th>
+                            <th>@fairwayHits.Take(selectedCourse.NumberOfHoles).Count(f => f)</th>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Notes</label>
+                <InputTextArea @bind-Value="round.Notes" class="form-control" rows="2" />
+            </div>
+
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-primary">Save Round</button>
+                <a href="/rounds" class="btn btn-secondary">Cancel</a>
+            </div>
+        }
+    </EditForm>
+}
+
+@code {
+    [Parameter]
+    public int? Id { get; set; }
+
+    private Round round = new() { DatePlayed = DateTime.Today };
+    private List<Course>? courses;
+    private Course? selectedCourse;
+    private string? userId;
+    private HoleScore[] holeScores = new HoleScore[18];
+    private bool[] fairwayHits = new bool[18];
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Initialize hole scores with defaults
+        for (int i = 0; i < 18; i++)
+        {
+            holeScores[i] = new HoleScore
+            {
+                HoleNumber = i + 1,
+                Par = 4,
+                Score = 4,
+                Putts = 2,
+                GreenInRegulation = false
+            };
+        }
+
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        userId = authState.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+
+        if (userId != null)
+        {
+            courses = await CourseService.GetCoursesAsync(userId);
+
+            if (Id.HasValue)
+            {
+                var existing = await RoundService.GetRoundAsync(Id.Value, userId);
+                if (existing != null)
+                {
+                    round = existing;
+                    selectedCourse = existing.Course;
+
+                    // Load existing hole scores
+                    foreach (var hs in existing.HoleScores)
+                    {
+                        var idx = hs.HoleNumber - 1;
+                        if (idx >= 0 && idx < 18)
+                        {
+                            holeScores[idx] = hs;
+                            fairwayHits[idx] = hs.FairwayHit ?? false;
+                        }
+                    }
+                }
+            }
+            else if (courses.Any())
+            {
+                // Default to first course
+                round.CourseId = courses.First().Id;
+                selectedCourse = courses.First();
+                InitializeHoleScores();
+            }
+        }
+    }
+
+    private void OnCourseChanged(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out int courseId))
+        {
+            round.CourseId = courseId;
+            selectedCourse = courses?.FirstOrDefault(c => c.Id == courseId);
+            InitializeHoleScores();
+        }
+    }
+
+    private void InitializeHoleScores()
+    {
+        if (selectedCourse == null) return;
+
+        for (int i = 0; i < selectedCourse.NumberOfHoles; i++)
+        {
+            var par = selectedCourse.GetHolePar(i + 1);
+            holeScores[i] = new HoleScore
+            {
+                HoleNumber = i + 1,
+                Par = par,
+                Score = par,
+                Putts = 2,
+                GreenInRegulation = false
+            };
+            fairwayHits[i] = false;
+        }
+    }
+
+    private void OnFairwayChanged(int idx)
+    {
+        holeScores[idx].FairwayHit = fairwayHits[idx];
+    }
+
+    private async Task SaveRound()
+    {
+        if (userId == null || selectedCourse == null) return;
+
+        round.UserId = userId;
+
+        // Set fairway hit values
+        for (int i = 0; i < selectedCourse.NumberOfHoles; i++)
+        {
+            if (holeScores[i].Par == 3)
+            {
+                holeScores[i].FairwayHit = null;
+            }
+            else
+            {
+                holeScores[i].FairwayHit = fairwayHits[i];
+            }
+        }
+
+        var scoresToSave = holeScores.Take(selectedCourse.NumberOfHoles).ToList();
+
+        if (Id.HasValue)
+        {
+            await RoundService.UpdateRoundAsync(round, scoresToSave, userId);
+        }
+        else
+        {
+            await RoundService.CreateRoundAsync(round, scoresToSave);
+        }
+
+        Navigation.NavigateTo("/rounds");
+    }
+}

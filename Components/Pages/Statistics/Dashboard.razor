@@ -1,0 +1,362 @@
+@page "/statistics"
+@using Microsoft.AspNetCore.Authorization
+@using GolfScorer.Services
+@attribute [Authorize]
+@inject StatisticsService StatisticsService
+@inject AuthenticationStateProvider AuthStateProvider
+@rendermode InteractiveServer
+
+<PageTitle>Statistics Dashboard</PageTitle>
+
+<h1>Statistics Dashboard</h1>
+
+<div class="mb-4">
+    <label class="form-label me-2">Year:</label>
+    <select class="form-select d-inline-block w-auto" @onchange="OnYearChanged">
+        <option value="">All Time</option>
+        @foreach (var y in availableYears)
+        {
+            <option value="@y" selected="@(y == selectedYear)">@y</option>
+        }
+    </select>
+</div>
+
+@if (stats == null)
+{
+    <p>Loading statistics...</p>
+}
+else if (stats.TotalRounds == 0)
+{
+    <div class="alert alert-info">
+        <p>No rounds recorded yet. Start tracking your golf rounds to see your statistics!</p>
+        <a href="/rounds/new" class="btn btn-primary">Record Your First Round</a>
+    </div>
+}
+else
+{
+    <!-- Summary Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3 col-sm-6 mb-3">
+            <div class="card text-center h-100">
+                <div class="card-body">
+                    <h6 class="card-subtitle mb-2 text-muted">Rounds Played</h6>
+                    <h2 class="card-title">@stats.TotalRounds</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6 mb-3">
+            <div class="card text-center h-100">
+                <div class="card-body">
+                    <h6 class="card-subtitle mb-2 text-muted">Average Score</h6>
+                    <h2 class="card-title">@stats.AverageScore.ToString("F1")</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6 mb-3">
+            <div class="card text-center h-100">
+                <div class="card-body">
+                    <h6 class="card-subtitle mb-2 text-muted">Best Score</h6>
+                    <h2 class="card-title text-success">@stats.BestScore</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6 mb-3">
+            <div class="card text-center h-100">
+                <div class="card-body">
+                    <h6 class="card-subtitle mb-2 text-muted">Handicap Index</h6>
+                    <h2 class="card-title">@(stats.HandicapIndex?.ToString("F1") ?? "N/A")</h2>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Detailed Stats -->
+    <div class="row">
+        <!-- Scoring Stats -->
+        <div class="col-md-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="mb-0">Scoring</h5>
+                </div>
+                <div class="card-body">
+                    <table class="table table-sm mb-0">
+                        <tbody>
+                            <tr>
+                                <td>Average Score</td>
+                                <td class="text-end"><strong>@stats.AverageScore.ToString("F1")</strong></td>
+                            </tr>
+                            <tr>
+                                <td>Best Round</td>
+                                <td class="text-end text-success"><strong>@stats.BestScore</strong></td>
+                            </tr>
+                            <tr>
+                                <td>Worst Round</td>
+                                <td class="text-end text-danger"><strong>@stats.WorstScore</strong></td>
+                            </tr>
+                            <tr>
+                                <td>Par 3 Average</td>
+                                <td class="text-end"><strong>@stats.Par3Average.ToString("F2")</strong></td>
+                            </tr>
+                            <tr>
+                                <td>Par 4 Average</td>
+                                <td class="text-end"><strong>@stats.Par4Average.ToString("F2")</strong></td>
+                            </tr>
+                            <tr>
+                                <td>Par 5 Average</td>
+                                <td class="text-end"><strong>@stats.Par5Average.ToString("F2")</strong></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Putting Stats -->
+        <div class="col-md-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="mb-0">Putting</h5>
+                </div>
+                <div class="card-body">
+                    <table class="table table-sm mb-0">
+                        <tbody>
+                            <tr>
+                                <td>Average Putts per Round</td>
+                                <td class="text-end"><strong>@stats.AveragePutts.ToString("F1")</strong></td>
+                            </tr>
+                            <tr>
+                                <td>1-Putt Percentage</td>
+                                <td class="text-end text-success"><strong>@stats.OnePuttPercentage.ToString("F1")%</strong></td>
+                            </tr>
+                            <tr>
+                                <td>2-Putt Percentage</td>
+                                <td class="text-end"><strong>@stats.TwoPuttPercentage.ToString("F1")%</strong></td>
+                            </tr>
+                            <tr>
+                                <td>3-Putt+ Percentage</td>
+                                <td class="text-end text-danger"><strong>@stats.ThreePuttPercentage.ToString("F1")%</strong></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- GIR & Fairways -->
+        <div class="col-md-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="mb-0">Greens & Fairways</h5>
+                </div>
+                <div class="card-body">
+                    <table class="table table-sm mb-0">
+                        <tbody>
+                            <tr>
+                                <td>Greens in Regulation</td>
+                                <td class="text-end"><strong>@stats.GIRPercentage.ToString("F1")%</strong></td>
+                            </tr>
+                            <tr>
+                                <td>Fairways Hit</td>
+                                <td class="text-end"><strong>@stats.FairwayPercentage.ToString("F1")%</strong></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Score Distribution -->
+        <div class="col-md-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="mb-0">Score Distribution</h5>
+                </div>
+                <div class="card-body">
+                    <table class="table table-sm mb-0">
+                        <tbody>
+                            @if (stats.EagleOrBetterCount > 0)
+                            {
+                                <tr>
+                                    <td>Eagles or Better</td>
+                                    <td class="text-end"><span class="badge bg-primary">@stats.EagleOrBetterCount</span></td>
+                                </tr>
+                            }
+                            <tr>
+                                <td>Birdies</td>
+                                <td class="text-end"><span class="badge bg-success">@stats.BirdieCount</span></td>
+                            </tr>
+                            <tr>
+                                <td>Pars</td>
+                                <td class="text-end"><span class="badge bg-secondary">@stats.ParCount</span></td>
+                            </tr>
+                            <tr>
+                                <td>Bogeys</td>
+                                <td class="text-end"><span class="badge bg-warning text-dark">@stats.BogeyCount</span></td>
+                            </tr>
+                            <tr>
+                                <td>Double Bogeys</td>
+                                <td class="text-end"><span class="badge bg-danger">@stats.DoubleBogeyCount</span></td>
+                            </tr>
+                            <tr>
+                                <td>Triple+</td>
+                                <td class="text-end"><span class="badge bg-dark">@stats.TripleOrWorseCount</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Rounds -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">Recent Rounds</h5>
+        </div>
+        <div class="card-body">
+            @if (stats.RecentRounds.Any())
+            {
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Course</th>
+                                <th>Score</th>
+                                <th>+/-</th>
+                                <th>Putts</th>
+                                <th>GIRs</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var round in stats.RecentRounds)
+                            {
+                                var scoreClass = round.ScoreToPar < 0 ? "text-success" : round.ScoreToPar > 0 ? "text-danger" : "";
+                                <tr>
+                                    <td>@round.Date.ToString("MMM d")</td>
+                                    <td>@round.CourseName</td>
+                                    <td><strong>@round.Score</strong></td>
+                                    <td class="@scoreClass">@(round.ScoreToPar > 0 ? $"+{round.ScoreToPar}" : round.ScoreToPar.ToString())</td>
+                                    <td>@round.Putts</td>
+                                    <td>@round.GIRs</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
+
+    <!-- Per-Hole Analysis -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">Per-Hole Performance</h5>
+        </div>
+        <div class="card-body">
+            @if (stats.HoleAverages.Any())
+            {
+                <div class="table-responsive">
+                    <table class="table table-sm table-bordered">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>Hole</th>
+                                @foreach (var hole in stats.HoleAverages.Take(9))
+                                {
+                                    <th class="text-center">@hole.HoleNumber</th>
+                                }
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Avg Score</strong></td>
+                                @foreach (var hole in stats.HoleAverages.Take(9))
+                                {
+                                    var diff = hole.AverageVsPar;
+                                    var cellClass = diff < 0 ? "table-success" : diff > 0.5 ? "table-danger" : diff > 0 ? "table-warning" : "";
+                                    <td class="text-center @cellClass">@hole.AverageScore.ToString("F1")</td>
+                                }
+                            </tr>
+                            <tr>
+                                <td><strong>GIR %</strong></td>
+                                @foreach (var hole in stats.HoleAverages.Take(9))
+                                {
+                                    <td class="text-center">@hole.GIRPercentage.ToString("F0")%</td>
+                                }
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                @if (stats.HoleAverages.Count > 9)
+                {
+                    <div class="table-responsive mt-3">
+                        <table class="table table-sm table-bordered">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>Hole</th>
+                                    @foreach (var hole in stats.HoleAverages.Skip(9))
+                                    {
+                                        <th class="text-center">@hole.HoleNumber</th>
+                                    }
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><strong>Avg Score</strong></td>
+                                    @foreach (var hole in stats.HoleAverages.Skip(9))
+                                    {
+                                        var diff = hole.AverageVsPar;
+                                        var cellClass = diff < 0 ? "table-success" : diff > 0.5 ? "table-danger" : diff > 0 ? "table-warning" : "";
+                                        <td class="text-center @cellClass">@hole.AverageScore.ToString("F1")</td>
+                                    }
+                                </tr>
+                                <tr>
+                                    <td><strong>GIR %</strong></td>
+                                    @foreach (var hole in stats.HoleAverages.Skip(9))
+                                    {
+                                        <td class="text-center">@hole.GIRPercentage.ToString("F0")%</td>
+                                    }
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            }
+        </div>
+    </div>
+}
+
+@code {
+    private GolfStatistics? stats;
+    private string? userId;
+    private int? selectedYear;
+    private List<int> availableYears = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        userId = authState.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+
+        if (userId != null)
+        {
+            selectedYear = DateTime.Now.Year;
+            availableYears = await StatisticsService.GetAvailableYearsAsync(userId);
+            await LoadStats();
+        }
+    }
+
+    private async Task LoadStats()
+    {
+        if (userId != null)
+        {
+            stats = await StatisticsService.GetStatisticsAsync(userId, selectedYear);
+        }
+    }
+
+    private async Task OnYearChanged(ChangeEventArgs e)
+    {
+        selectedYear = string.IsNullOrEmpty(e.Value?.ToString()) ? null : int.Parse(e.Value.ToString()!);
+        await LoadStats();
+    }
+}

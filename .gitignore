@@ -1,0 +1,66 @@
+# Build results
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+[Ww][Ii][Nn]32/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+bld/
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+
+# Visual Studio files
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+*.rsuser
+
+# Rider files
+.idea/
+
+# VS Code
+.vscode/
+
+# User-specific files
+*.userprefs
+
+# Build results of an idealized approach
+[Dd]ebugPublic/
+[Rr]eleasePublic/
+
+# NuGet packages
+*.nupkg
+*.snupkg
+.nuget/
+packages/
+
+# Windows image file caches
+Thumbs.db
+ehthumbs.db
+
+# Mac files
+.DS_Store
+
+# ASP.NET Scaffolding
+ScaffoldingReadMe.txt
+
+# Secrets and local settings
+appsettings.Development.json
+appsettings.Local.json
+secrets.json
+*.pfx
+*.publishsettings
+
+# Entity Framework Migrations (optional - uncomment if you don't want to track migrations)
+# Migrations/
+
+# Publish output
+publish/
+
+# Claude Code temp files
+tmpclaude-*

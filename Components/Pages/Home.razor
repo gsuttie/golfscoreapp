@@ -1,0 +1,197 @@
+@page "/"
+@using GolfScorer.Services
+@inject AuthenticationStateProvider AuthStateProvider
+@inject StatisticsService StatisticsService
+@rendermode InteractiveServer
+
+<PageTitle>Track my Scores</PageTitle>
+
+<AuthorizeView>
+    <Authorized>
+        @if (stats == null)
+        {
+            <p>Loading...</p>
+        }
+        else if (stats.TotalRounds == 0)
+        {
+            <div class="text-center py-5">
+                <h1 class="display-4">Welcome to Track my Scores!</h1>
+                <p class="lead">Start tracking your golf rounds to improve your game in 2026.</p>
+                <hr class="my-4">
+                <p>Get started by adding your first course, then record your rounds.</p>
+                <div class="d-flex justify-content-center gap-3 mt-4">
+                    <a href="/courses/new" class="btn btn-primary btn-lg">Add a Course</a>
+                    <a href="/rounds/new" class="btn btn-outline-primary btn-lg">Record a Round</a>
+                </div>
+            </div>
+        }
+        else
+        {
+            <h1>Welcome back!</h1>
+            <p class="lead">Here's your 2026 golf summary so far.</p>
+
+            <div class="row mt-4">
+                <div class="col-md-3 col-sm-6 mb-3">
+                    <div class="card text-center bg-primary text-white h-100">
+                        <div class="card-body">
+                            <h6 class="card-subtitle mb-2">Rounds Played</h6>
+                            <h2 class="card-title mb-0">@stats.TotalRounds</h2>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3 col-sm-6 mb-3">
+                    <div class="card text-center h-100">
+                        <div class="card-body">
+                            <h6 class="card-subtitle mb-2 text-muted">Average Score</h6>
+                            <h2 class="card-title mb-0">@stats.AverageScore.ToString("F1")</h2>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3 col-sm-6 mb-3">
+                    <div class="card text-center h-100">
+                        <div class="card-body">
+                            <h6 class="card-subtitle mb-2 text-muted">Best Score</h6>
+                            <h2 class="card-title mb-0 text-success">@stats.BestScore</h2>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3 col-sm-6 mb-3">
+                    <div class="card text-center h-100">
+                        <div class="card-body">
+                            <h6 class="card-subtitle mb-2 text-muted">Handicap</h6>
+                            <h2 class="card-title mb-0">@(stats.HandicapIndex?.ToString("F1") ?? "N/A")</h2>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row mt-4">
+                <div class="col-md-6 mb-4">
+                    <div class="card h-100">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">Recent Rounds</h5>
+                            <a href="/rounds" class="btn btn-sm btn-outline-primary">View All</a>
+                        </div>
+                        <div class="card-body">
+                            @if (stats.RecentRounds.Any())
+                            {
+                                <div class="table-responsive">
+                                    <table class="table table-sm mb-0">
+                                        <thead>
+                                            <tr>
+                                                <th>Date</th>
+                                                <th>Course</th>
+                                                <th>Score</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach (var round in stats.RecentRounds.Take(5))
+                                            {
+                                                var scoreClass = round.ScoreToPar < 0 ? "text-success" : round.ScoreToPar > 0 ? "text-danger" : "";
+                                                <tr>
+                                                    <td>@round.Date.ToString("MMM d")</td>
+                                                    <td>@round.CourseName</td>
+                                                    <td class="@scoreClass"><strong>@round.Score</strong></td>
+                                                </tr>
+                                            }
+                                        </tbody>
+                                    </table>
+                                </div>
+                            }
+                            else
+                            {
+                                <p class="text-muted mb-0">No rounds recorded yet.</p>
+                            }
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6 mb-4">
+                    <div class="card h-100">
+                        <div class="card-header">
+                            <h5 class="mb-0">Quick Stats</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row text-center">
+                                <div class="col-6 mb-3">
+                                    <h4 class="text-primary">@stats.GIRPercentage.ToString("F0")%</h4>
+                                    <small class="text-muted">Greens in Reg</small>
+                                </div>
+                                <div class="col-6 mb-3">
+                                    <h4 class="text-primary">@stats.AveragePutts.ToString("F1")</h4>
+                                    <small class="text-muted">Avg Putts</small>
+                                </div>
+                                <div class="col-6">
+                                    <h4 class="text-success">@stats.BirdieCount</h4>
+                                    <small class="text-muted">Birdies</small>
+                                </div>
+                                <div class="col-6">
+                                    <h4>@stats.ParCount</h4>
+                                    <small class="text-muted">Pars</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card-footer text-center">
+                            <a href="/statistics" class="btn btn-outline-primary">View Full Statistics</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="text-center mt-4">
+                <a href="/rounds/new" class="btn btn-primary btn-lg">Record a Round</a>
+            </div>
+        }
+    </Authorized>
+    <NotAuthorized>
+        <div class="text-center py-5">
+            <h1 class="display-4">Track my Scores</h1>
+            <p class="lead">Track your golf rounds and analyze your game throughout 2026.</p>
+            <hr class="my-4">
+            <div class="row justify-content-center mt-4">
+                <div class="col-md-4 mb-3">
+                    <div class="card h-100">
+                        <div class="card-body text-center">
+                            <h5 class="card-title">Track Every Round</h5>
+                            <p class="card-text">Record scores, putts, greens in regulation, and fairways hit for every hole.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <div class="card h-100">
+                        <div class="card-body text-center">
+                            <h5 class="card-title">Detailed Statistics</h5>
+                            <p class="card-text">See your scoring trends, handicap index, and identify areas to improve.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <div class="card h-100">
+                        <div class="card-body text-center">
+                            <h5 class="card-title">Multiple Users</h5>
+                            <p class="card-text">Each user has their own private data. Perfect for golf buddies!</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="d-flex justify-content-center gap-3 mt-4">
+                <a href="Account/Register" class="btn btn-primary btn-lg">Get Started</a>
+                <a href="Account/Login" class="btn btn-outline-primary btn-lg">Login</a>
+            </div>
+        </div>
+    </NotAuthorized>
+</AuthorizeView>
+
+@code {
+    private GolfStatistics? stats;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var userId = authState.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+
+        if (userId != null)
+        {
+            stats = await StatisticsService.GetStatisticsAsync(userId, DateTime.Now.Year);
+        }
+    }
+}

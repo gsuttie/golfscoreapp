@@ -1,0 +1,149 @@
+@page "/courses/new"
+@page "/courses/edit/{Id:int}"
+@using Microsoft.AspNetCore.Authorization
+@using GolfScorer.Models
+@using GolfScorer.Services
+@attribute [Authorize]
+@inject CourseService CourseService
+@inject AuthenticationStateProvider AuthStateProvider
+@inject NavigationManager Navigation
+@rendermode InteractiveServer
+
+<PageTitle>@(Id == null ? "Add Course" : "Edit Course")</PageTitle>
+
+<h1>@(Id == null ? "Add Course" : "Edit Course")</h1>
+
+<div class="row">
+    <div class="col-md-8">
+        <EditForm Model="course" OnValidSubmit="SaveCourse" FormName="courseForm">
+            <DataAnnotationsValidator />
+            <ValidationSummary class="text-danger" />
+
+            <div class="mb-3">
+                <label for="name" class="form-label">Course Name</label>
+                <InputText id="name" @bind-Value="course.Name" class="form-control" />
+                <ValidationMessage For="() => course.Name" class="text-danger" />
+            </div>
+
+            <div class="row mb-3">
+                <div class="col-md-4">
+                    <label for="holes" class="form-label">Number of Holes</label>
+                    <select id="holes" class="form-select" value="@course.NumberOfHoles" @onchange="OnHolesChanged">
+                        <option value="9">9</option>
+                        <option value="18">18</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label for="slope" class="form-label">Slope Rating</label>
+                    <InputNumber id="slope" @bind-Value="course.SlopeRating" class="form-control" />
+                </div>
+                <div class="col-md-4">
+                    <label for="rating" class="form-label">Course Rating</label>
+                    <InputNumber id="rating" @bind-Value="course.CourseRating" class="form-control" />
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <div class="form-check">
+                    <InputCheckbox id="isPublic" @bind-Value="course.IsPublic" class="form-check-input" />
+                    <label for="isPublic" class="form-check-label">Make this course public (visible to other users)</label>
+                </div>
+            </div>
+
+            <h4 class="mt-4 mb-3">Hole Pars</h4>
+            <div class="row g-2 mb-4">
+                @for (int i = 1; i <= course.NumberOfHoles; i++)
+                {
+                    var holeNum = i;
+                    <div class="col-6 col-md-4 col-lg-2">
+                        <label class="form-label small">Hole @holeNum</label>
+                        <select class="form-select form-select-sm"
+                                value="@holePars[holeNum - 1]"
+                                @onchange="@(e => OnHoleParChanged(holeNum, e))">
+                            <option value="3">Par 3</option>
+                            <option value="4">Par 4</option>
+                            <option value="5">Par 5</option>
+                        </select>
+                    </div>
+                }
+            </div>
+
+            <div class="mb-3">
+                <strong>Total Par: @course.Par</strong>
+            </div>
+
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-primary">Save Course</button>
+                <a href="/courses" class="btn btn-secondary">Cancel</a>
+            </div>
+        </EditForm>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public int? Id { get; set; }
+
+    private Course course = new();
+    private string? userId;
+    private int[] holePars = new int[18];
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        userId = authState.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+
+        if (Id.HasValue && userId != null)
+        {
+            var existing = await CourseService.GetCourseAsync(Id.Value, userId);
+            if (existing != null)
+            {
+                course = existing;
+            }
+        }
+
+        // Initialize hole pars array
+        for (int i = 1; i <= 18; i++)
+        {
+            holePars[i - 1] = course.GetHolePar(i);
+        }
+    }
+
+    private void OnHoleParChanged(int holeNumber, ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out int par))
+        {
+            holePars[holeNumber - 1] = par;
+            course.SetHolePar(holeNumber, par);
+            course.Par = holePars.Take(course.NumberOfHoles).Sum();
+        }
+    }
+
+    private void OnHolesChanged(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out int holes))
+        {
+            course.NumberOfHoles = holes;
+            course.Par = holePars.Take(holes).Sum();
+        }
+    }
+
+    private async Task SaveCourse()
+    {
+        if (userId == null) return;
+
+        course.UserId = userId;
+        course.Par = holePars.Take(course.NumberOfHoles).Sum();
+
+        if (Id.HasValue)
+        {
+            await CourseService.UpdateCourseAsync(course, userId);
+        }
+        else
+        {
+            await CourseService.CreateCourseAsync(course);
+        }
+
+        Navigation.NavigateTo("/courses");
+    }
+}

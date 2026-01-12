@@ -1,0 +1,306 @@
+@page "/rounds/{Id:int}"
+@using Microsoft.AspNetCore.Authorization
+@using GolfScorer.Models
+@using GolfScorer.Services
+@attribute [Authorize]
+@inject RoundService RoundService
+@inject AuthenticationStateProvider AuthStateProvider
+@inject NavigationManager Navigation
+@rendermode InteractiveServer
+
+<PageTitle>Round Details</PageTitle>
+
+@if (round == null)
+{
+    <p>Loading...</p>
+}
+else
+{
+    var scoreToPar = round.TotalScore - (round.Course?.Par ?? 72);
+    var scoreClass = scoreToPar < 0 ? "text-success" : scoreToPar > 0 ? "text-danger" : "";
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Round at @(round.Course?.Name ?? "Unknown")</h1>
+        <div>
+            <a href="/rounds/edit/@round.Id" class="btn btn-outline-primary me-2">Edit</a>
+            <a href="/rounds" class="btn btn-secondary">Back to Rounds</a>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title">Score</h5>
+                    <h2 class="@scoreClass">@round.TotalScore</h2>
+                    <p class="card-text @scoreClass">
+                        @(scoreToPar > 0 ? $"+{scoreToPar}" : scoreToPar == 0 ? "E" : scoreToPar.ToString())
+                    </p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title">Putts</h5>
+                    <h2>@round.TotalPutts</h2>
+                    <p class="card-text text-muted">@((round.TotalPutts / (double)(round.Course?.NumberOfHoles ?? 18)).ToString("F1")) per hole</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title">GIRs</h5>
+                    <h2>@round.GIRCount / @(round.Course?.NumberOfHoles ?? 18)</h2>
+                    <p class="card-text text-muted">@(round.GIRCount * 100 / (round.Course?.NumberOfHoles ?? 18))%</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title">Fairways</h5>
+                    @{
+                        var fairwayHoles = round.HoleScores.Count(h => h.FairwayHit.HasValue);
+                        var fairwaysHit = round.HoleScores.Count(h => h.FairwayHit == true);
+                    }
+                    <h2>@fairwaysHit / @fairwayHoles</h2>
+                    <p class="card-text text-muted">@(fairwayHoles > 0 ? $"{fairwaysHit * 100 / fairwayHoles}%" : "-")</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <p><strong>Date:</strong> @round.DatePlayed.ToString("dddd, MMMM d, yyyy")</p>
+            <p><strong>Course:</strong> @round.Course?.Name (Par @round.Course?.Par)</p>
+            @if (!string.IsNullOrEmpty(round.WeatherConditions))
+            {
+                <p><strong>Weather:</strong> @round.WeatherConditions</p>
+            }
+            @if (!string.IsNullOrEmpty(round.Notes))
+            {
+                <p><strong>Notes:</strong> @round.Notes</p>
+            }
+        </div>
+    </div>
+
+    <h4 class="mb-3">Scorecard</h4>
+
+    @if (round.Course?.NumberOfHoles == 18)
+    {
+        <!-- Front 9 -->
+        <div class="table-responsive mb-3">
+            <table class="table table-bordered table-sm">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Hole</th>
+                        @for (int i = 1; i <= 9; i++)
+                        {
+                            <th class="text-center">@i</th>
+                        }
+                        <th class="text-center">Out</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>Par</strong></td>
+                        @for (int i = 1; i <= 9; i++)
+                        {
+                            <td class="text-center">@round.Course?.GetHolePar(i)</td>
+                        }
+                        <td class="text-center"><strong>@(Enumerable.Range(1, 9).Sum(h => round.Course?.GetHolePar(h) ?? 4))</strong></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Score</strong></td>
+                        @for (int i = 1; i <= 9; i++)
+                        {
+                            var hs = round.HoleScores.FirstOrDefault(h => h.HoleNumber == i);
+                            var par = round.Course?.GetHolePar(i) ?? 4;
+                            var diff = (hs?.Score ?? par) - par;
+                            var cellClass = diff < 0 ? "table-success" : diff > 0 ? "table-danger" : "";
+                            <td class="text-center @cellClass">@(hs != null ? hs.Score.ToString() : "-")</td>
+                        }
+                        <td class="text-center"><strong>@round.HoleScores.Where(h => h.HoleNumber <= 9).Sum(h => h.Score)</strong></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Putts</strong></td>
+                        @for (int i = 1; i <= 9; i++)
+                        {
+                            var hs = round.HoleScores.FirstOrDefault(h => h.HoleNumber == i);
+                            <td class="text-center">@(hs != null ? hs.Putts.ToString() : "-")</td>
+                        }
+                        <td class="text-center"><strong>@round.HoleScores.Where(h => h.HoleNumber <= 9).Sum(h => h.Putts)</strong></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Back 9 -->
+        <div class="table-responsive mb-4">
+            <table class="table table-bordered table-sm">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Hole</th>
+                        @for (int i = 10; i <= 18; i++)
+                        {
+                            <th class="text-center">@i</th>
+                        }
+                        <th class="text-center">In</th>
+                        <th class="text-center">Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>Par</strong></td>
+                        @for (int i = 10; i <= 18; i++)
+                        {
+                            <td class="text-center">@round.Course?.GetHolePar(i)</td>
+                        }
+                        <td class="text-center"><strong>@(Enumerable.Range(10, 9).Sum(h => round.Course?.GetHolePar(h) ?? 4))</strong></td>
+                        <td class="text-center"><strong>@round.Course?.Par</strong></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Score</strong></td>
+                        @for (int i = 10; i <= 18; i++)
+                        {
+                            var hs = round.HoleScores.FirstOrDefault(h => h.HoleNumber == i);
+                            var par = round.Course?.GetHolePar(i) ?? 4;
+                            var diff = (hs?.Score ?? par) - par;
+                            var cellClass = diff < 0 ? "table-success" : diff > 0 ? "table-danger" : "";
+                            <td class="text-center @cellClass">@(hs != null ? hs.Score.ToString() : "-")</td>
+                        }
+                        <td class="text-center"><strong>@round.HoleScores.Where(h => h.HoleNumber >= 10).Sum(h => h.Score)</strong></td>
+                        <td class="text-center"><strong>@round.TotalScore</strong></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Putts</strong></td>
+                        @for (int i = 10; i <= 18; i++)
+                        {
+                            var hs = round.HoleScores.FirstOrDefault(h => h.HoleNumber == i);
+                            <td class="text-center">@(hs != null ? hs.Putts.ToString() : "-")</td>
+                        }
+                        <td class="text-center"><strong>@round.HoleScores.Where(h => h.HoleNumber >= 10).Sum(h => h.Putts)</strong></td>
+                        <td class="text-center"><strong>@round.TotalPutts</strong></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    }
+    else
+    {
+        <!-- 9 holes -->
+        <div class="table-responsive mb-4">
+            <table class="table table-bordered table-sm">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Hole</th>
+                        @for (int i = 1; i <= 9; i++)
+                        {
+                            <th class="text-center">@i</th>
+                        }
+                        <th class="text-center">Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>Par</strong></td>
+                        @for (int i = 1; i <= 9; i++)
+                        {
+                            <td class="text-center">@round.Course?.GetHolePar(i)</td>
+                        }
+                        <td class="text-center"><strong>@round.Course?.Par</strong></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Score</strong></td>
+                        @for (int i = 1; i <= 9; i++)
+                        {
+                            var hs = round.HoleScores.FirstOrDefault(h => h.HoleNumber == i);
+                            var par = round.Course?.GetHolePar(i) ?? 4;
+                            var diff = (hs?.Score ?? par) - par;
+                            var cellClass = diff < 0 ? "table-success" : diff > 0 ? "table-danger" : "";
+                            <td class="text-center @cellClass">@(hs != null ? hs.Score.ToString() : "-")</td>
+                        }
+                        <td class="text-center"><strong>@round.TotalScore</strong></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Putts</strong></td>
+                        @for (int i = 1; i <= 9; i++)
+                        {
+                            var hs = round.HoleScores.FirstOrDefault(h => h.HoleNumber == i);
+                            <td class="text-center">@(hs != null ? hs.Putts.ToString() : "-")</td>
+                        }
+                        <td class="text-center"><strong>@round.TotalPutts</strong></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    }
+
+    <h4 class="mb-3">Score Distribution</h4>
+    <div class="row">
+        @{
+            var eagles = round.HoleScores.Count(h => h.ScoreToPar <= -2);
+            var birdies = round.HoleScores.Count(h => h.ScoreToPar == -1);
+            var pars = round.HoleScores.Count(h => h.ScoreToPar == 0);
+            var bogeys = round.HoleScores.Count(h => h.ScoreToPar == 1);
+            var doubles = round.HoleScores.Count(h => h.ScoreToPar == 2);
+            var others = round.HoleScores.Count(h => h.ScoreToPar >= 3);
+        }
+        <div class="col-md-6">
+            <ul class="list-group">
+                @if (eagles > 0)
+                {
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        Eagle or Better
+                        <span class="badge bg-primary rounded-pill">@eagles</span>
+                    </li>
+                }
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                    Birdies
+                    <span class="badge bg-success rounded-pill">@birdies</span>
+                </li>
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                    Pars
+                    <span class="badge bg-secondary rounded-pill">@pars</span>
+                </li>
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                    Bogeys
+                    <span class="badge bg-warning text-dark rounded-pill">@bogeys</span>
+                </li>
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                    Double Bogeys
+                    <span class="badge bg-danger rounded-pill">@doubles</span>
+                </li>
+                @if (others > 0)
+                {
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        Triple+
+                        <span class="badge bg-dark rounded-pill">@others</span>
+                    </li>
+                }
+            </ul>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+
+    private Round? round;
+    private string? userId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        userId = authState.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+
+        if (userId != null)
+        {
+            round = await RoundService.GetRoundAsync(Id, userId);
+        }
+    }
+}
