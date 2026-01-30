@@ -6,6 +6,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <UserSecretsId>aspnet-GolfScorer-fb76c8b5-1e92-4c11-b3fc-13d15db3ab1a</UserSecretsId>
     <BlazorDisableThrowNavigationException>true</BlazorDisableThrowNavigationException>
+    <DefaultItemExcludes>$(DefaultItemExcludes);GolfScorer.Tests\**</DefaultItemExcludes>
   </PropertyGroup>
 
   <ItemGroup>

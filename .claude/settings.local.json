@@ -36,7 +36,8 @@
       "Bash(az webapp config appsettings delete:*)",
       "Bash(az webapp ssh:*)",
       "Bash(Remove-Item \"C:\\\\personal\\\\golfapp\\\\tmpclaude-*-cwd\")",
-      "Bash(git -C \"C:\\\\personal\\\\golfapp\" status)"
+      "Bash(git -C \"C:\\\\personal\\\\golfapp\" status)",
+      "Bash(dotnet sln:*)"
     ]
   }
 }
