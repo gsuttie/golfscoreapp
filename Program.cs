@@ -8,6 +8,16 @@ using GolfScorer.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Ensure web root path is set correctly for Azure deployment
+if (!builder.Environment.IsDevelopment())
+{
+    var webRoot = Path.Combine(builder.Environment.ContentRootPath, "wwwroot");
+    if (Directory.Exists(webRoot))
+    {
+        builder.Environment.WebRootPath = webRoot;
+    }
+}
+
 // Add services to the container.
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
@@ -62,7 +72,7 @@ app.UseHttpsRedirection();
 
 app.UseAntiforgery();
 
-app.MapStaticAssets();
+app.UseStaticFiles();
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 
