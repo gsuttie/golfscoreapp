@@ -68,6 +68,7 @@ public class StatisticsService
                 .Take(10)
                 .Select(r => new RoundSummary
                 {
+                    Id = r.Id,
                     Date = r.DatePlayed,
                     CourseName = r.Course?.Name ?? "Unknown",
                     Score = r.TotalScore,
@@ -190,6 +191,7 @@ public class GolfStatistics
 
 public class RoundSummary
 {
+    public int Id { get; set; }
     public DateTime Date { get; set; }
     public string CourseName { get; set; } = string.Empty;
     public int Score { get; set; }

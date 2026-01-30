@@ -83,8 +83,16 @@ public class RoundService
 
         foreach (var score in holeScores)
         {
-            score.RoundId = existing.Id;
-            _context.HoleScores.Add(score);
+            _context.HoleScores.Add(new HoleScore
+            {
+                RoundId = existing.Id,
+                HoleNumber = score.HoleNumber,
+                Par = score.Par,
+                Score = score.Score,
+                Putts = score.Putts,
+                GreenInRegulation = score.GreenInRegulation,
+                FairwayHit = score.FairwayHit
+            });
         }
 
         await _context.SaveChangesAsync();

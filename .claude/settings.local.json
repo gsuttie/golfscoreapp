@@ -37,7 +37,8 @@
       "Bash(az webapp ssh:*)",
       "Bash(Remove-Item \"C:\\\\personal\\\\golfapp\\\\tmpclaude-*-cwd\")",
       "Bash(git -C \"C:\\\\personal\\\\golfapp\" status)",
-      "Bash(dotnet sln:*)"
+      "Bash(dotnet sln:*)",
+      "Bash(dotnet test:*)"
     ]
   }
 }

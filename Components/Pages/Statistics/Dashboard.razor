@@ -4,6 +4,7 @@
 @attribute [Authorize]
 @inject StatisticsService StatisticsService
 @inject AuthenticationStateProvider AuthStateProvider
+@inject NavigationManager Navigation
 @rendermode InteractiveServer
 
 <PageTitle>Statistics Dashboard</PageTitle>
@@ -232,7 +233,7 @@ else
                             @foreach (var round in stats.RecentRounds)
                             {
                                 var scoreClass = round.ScoreToPar < 0 ? "text-success" : round.ScoreToPar > 0 ? "text-danger" : "";
-                                <tr>
+                                <tr @onclick="() => NavigateToRound(round.Id)" style="cursor: pointer;">
                                     <td>@round.Date.ToString("MMM d")</td>
                                     <td>@round.CourseName</td>
                                     <td><strong>@round.Score</strong></td>
@@ -240,6 +241,48 @@ else
                                     <td>@round.Putts</td>
                                     <td>@round.GIRs</td>
                                 </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
+
+    <!-- Hole Difficulty Ranking -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">Hole Difficulty Ranking</h5>
+        </div>
+        <div class="card-body">
+            @if (stats.HoleAverages.Any())
+            {
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>Rank</th>
+                                <th>Hole</th>
+                                <th class="text-center">Par</th>
+                                <th class="text-center">Avg Score</th>
+                                <th class="text-center">Avg vs Par</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @{ var rank = 1; }
+                            @foreach (var hole in stats.HoleAverages.OrderByDescending(h => h.AverageVsPar))
+                            {
+                                var diffClass = hole.AverageVsPar < 0 ? "text-success" : hole.AverageVsPar > 0.5 ? "text-danger" : hole.AverageVsPar > 0 ? "text-warning" : "";
+                                <tr>
+                                    <td>@rank</td>
+                                    <td><strong>Hole @hole.HoleNumber</strong></td>
+                                    <td class="text-center">@hole.AveragePar.ToString("F0")</td>
+                                    <td class="text-center">@hole.AverageScore.ToString("F2")</td>
+                                    <td class="text-center @diffClass">
+                                        <strong>@(hole.AverageVsPar > 0 ? "+" : "")@hole.AverageVsPar.ToString("F2")</strong>
+                                    </td>
+                                </tr>
+                                rank++;
                             }
                         </tbody>
                     </table>
@@ -358,5 +401,10 @@ else
     {
         selectedYear = string.IsNullOrEmpty(e.Value?.ToString()) ? null : int.Parse(e.Value.ToString()!);
         await LoadStats();
+    }
+
+    private void NavigateToRound(int roundId)
+    {
+        Navigation.NavigateTo($"/rounds/{roundId}");
     }
 }
