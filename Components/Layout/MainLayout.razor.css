@@ -2,21 +2,24 @@
     position: relative;
     display: flex;
     flex-direction: column;
+    min-height: 100vh;
 }
 
 main {
     flex: 1;
+    background-color: var(--gc-bg);
 }
 
 .sidebar {
-    background-image: linear-gradient(180deg, rgb(5, 39, 103) 0%, #3a0647 70%);
+    background: #061210;
+    border-right: 1px solid var(--gc-border);
 }
 
 .top-row {
-    background-color: #f7f7f7;
-    border-bottom: 1px solid #d6d5d5;
+    background-color: var(--gc-surface);
+    border-bottom: 1px solid var(--gc-border);
     justify-content: flex-end;
-    height: 3.5rem;
+    height: 3.25rem;
     display: flex;
     align-items: center;
 }
@@ -25,10 +28,16 @@ main {
         white-space: nowrap;
         margin-left: 1.5rem;
         text-decoration: none;
+        color: var(--gc-cream-dim);
+        font-size: 0.82rem;
+        font-weight: 500;
+        letter-spacing: 0.03em;
+        transition: color 0.18s ease;
     }
 
     .top-row ::deep a:hover, .top-row ::deep .btn-link:hover {
-        text-decoration: underline;
+        color: var(--gc-gold);
+        text-decoration: none;
     }
 
     .top-row ::deep a:first-child {
@@ -52,7 +61,7 @@ main {
     }
 
     .sidebar {
-        width: 250px;
+        width: 240px;
         height: 100vh;
         position: sticky;
         top: 0;
@@ -77,14 +86,14 @@ main {
 }
 
 #blazor-error-ui {
-    color-scheme: light only;
-    background: lightyellow;
+    color-scheme: dark only;
+    background: #0f0808;
     bottom: 0;
-    box-shadow: 0 -1px 2px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.7);
     box-sizing: border-box;
     display: none;
     left: 0;
-    padding: 0.6rem 1.25rem 0.7rem 1.25rem;
+    padding: 0.65rem 1.5rem 0.7rem 1.5rem;
     position: fixed;
     width: 100%;
     z-index: 1000;
